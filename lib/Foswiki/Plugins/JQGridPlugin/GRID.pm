@@ -105,7 +105,7 @@ sub init {
 
 ---++ ClassMethod handleGrid( $this, $params, $topic, $web ) -> $result
 
-Tag handler for =%<nop>GRID%=. 
+Tag handler for =%<nop>GRID{web="blah"}%=. 
 
 =cut
 
@@ -133,10 +133,16 @@ sub handleGrid {
   my $theRowList = $params->{rowlist} || '5, 10, 20, 30, 40, 50, 100';
   my $theEdit = $params->{edit} || 'off';
   my $theMulti = $params->{multiselect} || 'off';
+  my $theLoadonce = $params->{loadonce} || 'off';
+  my $theSortable = $params->{sortable} || 'off';
+  my $theGridComplete = $params->{gridComplete};
+  my $theOnSelectRow = $params->{onSelectRow};
+  my $theOnSelectAll = $params->{onSelectAll};
+  
 
   # sanitize params
   $theRowNumbers = ($theRowNumbers eq 'on')?'true':'false';
-  my $gridId = "jqGrid".Foswiki::Plugins::JQueryPlugin::Plugins::getRandom();
+  my $gridId = $params->{id} || "jqGrid".Foswiki::Plugins::JQueryPlugin::Plugins::getRandom();
   my $pagerId = "jqGridPager".Foswiki::Plugins::JQueryPlugin::Plugins::getRandom();
 
   my $filterToolbar = '';
@@ -195,6 +201,12 @@ HERE
   push @metadata, "height: '$theHeight'" if $theHeight;
   push @metadata, 'scroll: true' if $theScroll eq 'on';
   push @metadata, 'viewrecords: true' if $theViewRecords eq 'on';
+  push @metadata, 'loadonce: true' if $theLoadonce eq 'on';
+  push @metadata, 'sortable: true' if $theSortable eq 'on';
+  push @metadata, 'onSelectRow: ' . $theOnSelectRow if $theOnSelectRow;
+  push @metadata, 'onSelectAll: ' . $theOnSelectAll if $theOnSelectAll;
+  push @metadata, 'gridComplete: ' . $theGridComplete if $theGridComplete;
+  
 
   if (defined $theWidth) {
     if ($theWidth && $theWidth eq 'auto') {
@@ -297,12 +309,21 @@ HERE
 
     my $baseWeb = $this->{session}->{webName};
     my $baseTopic = $this->{session}->{topicName};
-    my $gridConnectorUrl = Foswiki::Func::getScriptUrl('JQGridPlugin', 'gridconnector', 'rest',
-      topic=>$baseWeb.'.'.$baseTopic,
-      web=>$theWeb,
-      query=>$theQuery,
-      columns=>join(',', @selectedFields),
-    );
+    my $gridConnectorUrl;
+    if ( $params->{querytopic} ) {
+     my ($queryWeb, $queryTopic) = Foswiki::Func::normalizeWebTopicName($baseWeb, $params->{querytopic});
+     $gridConnectorUrl = Foswiki::Func::getScriptUrl($queryWeb, $queryTopic, 'view', 
+       web => $queryWeb, topic => $queryWeb . '.' . $queryTopic, 
+       skin => 'text', contenttype => 'text/xml', section => 'grid',
+       query => $theQuery, columns=>join(',', @selectedFields));
+     } else {
+      $gridConnectorUrl = Foswiki::Func::getScriptUrl('JQGridPlugin', 'gridconnector', 'rest',
+        topic=>$baseWeb.'.'.$baseTopic,
+        web=>$theWeb,
+        query=>$theQuery,
+        columns=>join(',', @selectedFields),
+      );
+    }
     $gridConnectorUrl =~ s/'/\\'/g;
     push @metadata, "url:'$gridConnectorUrl'";
     push @metadata, "datatype: 'xml'";
@@ -582,7 +603,7 @@ sub count {
   my ($this, $web, $query) = @_;
 
   my $count;
-  if (Foswiki::Func::getContext->{DBCachePluginEnabled}) {
+  if (0 and Foswiki::Func::getContext->{DBCachePluginEnabled}) {
     require Foswiki::Plugins::DBCachePlugin;
     my $db = Foswiki::Plugins::DBCachePlugin::getDB($web);
     if(defined $db) {
@@ -595,7 +616,18 @@ sub count {
     }
   } else {
     # TODO
-    die "count not implemented";
+    $count = Foswiki::Func::expandCommonVariables(<<"HERE");
+%SEARCH{
+    "$query"
+    type="query"
+    web="$web"
+    nonoise="on"
+    format=""
+    footer="\$ntopics"
+    zeroresults="0"
+}%
+HERE
+    chomp($count);
   }
 
   return $count;
@@ -643,7 +675,7 @@ sub search {
 
   $params{sort} = $this->column2FieldName($params{sort});
 
-  if ($context->{DBCachePluginEnabled}) {
+  if (0 and $context->{DBCachePluginEnabled}) {
     $tml = '%DBQUERY{"'.$params{query}.'" web="'.$params{web}.'" reverse="'.$params{reverse}.'" sort="'.$params{sort}.'" skip="'.$params{start}.'" limit="'.$params{rows}.'" ';
     $tml .= 'separator="$n"';
     $tml .= 'footer="$n</noautolink></rows>"';
@@ -661,10 +693,52 @@ sub search {
       $tml .= '<cell><![CDATA['.$cell.']]></cell>'."\n"; # SMELL extra space behind cell needed to work around bug in Render::getRenderedVerision
     }
     $tml .= '</row>"}%';
-
   } else {
+    my %orderField = (
+    'Topic' => 'topic',
+    'TopicTitle' => 'formfield(TopicTitle)',
+    'info.date' => 'modified', 
+    'Modified' => 'modified',
+    'Changed' => 'modified',
+    'info.author' => 'editby', 
+    'By' => 'editby',
+    'Author' => 'editby');
+    my $order = $orderField{$params{sort}};
+
+    if (not $order and $params{sort}) {
+        $order = "formfield($params{sort})";
+    }
     # TODO
-    die "count not implemented";
+    $tml = <<"HERE";
+<noautolink>%SEARCH{
+    "$params{query}"
+    type="query"
+    nonoise="on"
+    web="$params{web}"
+    reverse="$params{reverse}"
+    pagesize="$params{rows}"
+    showpage="$params{page}"
+    order="$order"
+    separator="\$n"
+    footer="\$n</noautolink></rows>"
+    header="<?xml version='1.0' encoding='utf-8'?><noautolink><rows>
+    <page>$params{page}</page>
+    <total>$params{totalPages}</total>
+    <records>$params{count}</records>\$n"
+    format="<row id='\$web.\$topic'>
+HERE
+    my @selectedFields = split(/\s*,\s*/, $params{columns});
+    foreach my $fieldName (@selectedFields) {
+      my $cell = '';
+      $fieldName = $this->column2FieldName($fieldName);
+      if ($fieldName eq 'topic') {
+          $cell .= '$topic';
+      } else {
+          $cell .= '$percntQUERY{\"\'$web.$topic\'/' . $fieldName . '\"}$percnt';
+      }
+      $tml .= '<cell><![CDATA[<nop>'.$cell.']]></cell>'."\n"; # SMELL extra space behind cell needed to work around bug in Render::getRenderedVerision
+    }
+    $tml .= '</row>"}%</noautolink>';
   }
 
   $tml = Foswiki::Func::expandCommonVariables($tml, $params{topic}, $params{web});

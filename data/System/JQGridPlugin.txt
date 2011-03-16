@@ -46,7 +46,14 @@ render a grid of topics matching the given query
 | =colname_align= | (per column option) alignment of the data in the cell | left |
 | =colname_width= | (per column option) width of this column in pixel | |
 | =colname_search= | (per column option) toggle on/off if this column is searchable or not | on |
-
+| =id= | id of the grid | Any relevant name |
+| =querytopic= | search query | A topic that jQGrid should use as the target of its ajax requests, instead of JQGridPlugin's rest handler. The topic should render an XML response appropriate for the URL parameters that jqGrid gives it (page, sort, columns, etc) |
+| =sortable= | (per column option) sort column in ascending or descending order | on |
+| =loadonce= | grid loads data from the server once, all other manipulations are done on the client side | on |
+| =multiselect= | allows selection of multiple rows in the grid | on |
+| =onSelectRow= | event handler triggered when a row is selected | |
+| =onSelectAll= | event handler triggered when all rows selected at once | |
+| =gridComplete= | event handler triggered when the grid is loaded | |
 ---++ Special columns
 
 Normally, the data and the way it is displayed in a GRID is specified by the !DataForm definition the GRID expression points to.
@@ -73,6 +80,7 @@ subject to further changes.
 
 ---++ Examples
 %GRID{
+  query="form.name~'*UserForm'"
   form="System.UserForm"
   web="%USERSWEB%"
   columns="Topic,FirstName,LastName,Organization,Country,Telephone"
@@ -92,6 +100,7 @@ subject to further changes.
 |  Release: | %$RELEASE% |
 |  Version: | %$VERSION% |
 |  Change History: | <!-- versions below in reverse order -->&nbsp; |
+|  06 Jan 2011: | 0.3.1: Foswikitask:Item10228 - add parameters to grid to make it customizable |
 |  08 Sep 2010: | 0.3: upgraded to jqgrid-3.7.2; fixed vertical scrolling; fixed resizing of columns |
 |  19 Nov 2010: | 0.2.1: Foswikitask:Item9564 - add dependency to help script load ordering |
 |  26 May 2010: | 0.2: fixed loading locales; \
