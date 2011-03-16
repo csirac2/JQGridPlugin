@@ -603,7 +603,7 @@ sub count {
   my ($this, $web, $query) = @_;
 
   my $count;
-  if (0 and Foswiki::Func::getContext->{DBCachePluginEnabled}) {
+  if ( Foswiki::Func::getContext->{DBCachePluginEnabled}) {
     require Foswiki::Plugins::DBCachePlugin;
     my $db = Foswiki::Plugins::DBCachePlugin::getDB($web);
     if(defined $db) {
@@ -675,7 +675,7 @@ sub search {
 
   $params{sort} = $this->column2FieldName($params{sort});
 
-  if (0 and $context->{DBCachePluginEnabled}) {
+  if ( $context->{DBCachePluginEnabled}) {
     $tml = '%DBQUERY{"'.$params{query}.'" web="'.$params{web}.'" reverse="'.$params{reverse}.'" sort="'.$params{sort}.'" skip="'.$params{start}.'" limit="'.$params{rows}.'" ';
     $tml .= 'separator="$n"';
     $tml .= 'footer="$n</noautolink></rows>"';
