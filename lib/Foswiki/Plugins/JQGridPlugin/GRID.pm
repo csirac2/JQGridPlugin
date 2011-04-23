@@ -616,18 +616,19 @@ sub count {
     }
   } else {
     # TODO
-    $count = Foswiki::Func::expandCommonVariables(<<"HERE");
-%SEARCH{
-    "$query"
-    type="query"
-    web="$web"
-    nonoise="on"
-    format=""
-    footer="\$ntopics"
-    zeroresults="0"
-}%
-HERE
-    chomp($count);
+#    $count = Foswiki::Func::expandCommonVariables(<<"HERE");
+#%SEARCH{
+#    "$query"
+#    type="query"
+#    web="$web"
+#    nonoise="on"
+#    format=""
+#    footer="\$ntopics"
+#    zeroresults="0"
+#}%
+#HERE
+#    chomp($count);
+	$count = 1;
   }
 
   return $count;
@@ -709,6 +710,9 @@ sub search {
         $order = "formfield($params{sort})";
     }
     # TODO
+	if (not defined $order) {
+		$order = 'topic';
+	}
     $tml = <<"HERE";
 <noautolink>%SEARCH{
     "$params{query}"
@@ -720,11 +724,12 @@ sub search {
     showpage="$params{page}"
     order="$order"
     separator="\$n"
+	pagerformat="<page>\$currentpage</page>
+	<total>\$numberofpages</total>
+	<records>\$percntQUERY{\$numberofpages * \$pagesize}\$percnt</records>\$n"
     footer="\$n</noautolink></rows>"
     header="<?xml version='1.0' encoding='utf-8'?><noautolink><rows>
-    <page>$params{page}</page>
-    <total>$params{totalPages}</total>
-    <records>$params{count}</records>\$n"
+    \$pager"
     format="<row id='\$web.\$topic'>
 HERE
     my @selectedFields = split(/\s*,\s*/, $params{columns});
