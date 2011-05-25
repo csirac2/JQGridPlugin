@@ -72,7 +72,7 @@ sub new {
     'info.author' => 'By', 
     'By' => 'info.author',
     'info.author' => 'Author', 
-    'Author' => 'info.author',
+    'Author' => 'info.author'
   };
 
   return $this;
@@ -532,14 +532,18 @@ sub restGridConnectorSearch {
     next unless $values;
 
     my $fieldName = $this->column2FieldName($columnName);
+    my @filterquery;
 
     # add search filters
     foreach my $value (split(/\s+/, $values)) {
       if ($value =~ /^-(.*)$/) {
-        $query .= " AND !(lc($fieldName)=~lc('$1'))";
+        push(@filterquery, "NOT (lc($fieldName)=~lc('$1'))");
       } else {
-        $query .= " AND lc($fieldName)=~lc('$value')";
+        push(@filterquery, "lc($fieldName)=~lc('$value')");
       }
+    }
+    if (scalar(@filterquery)) {
+      $query = join(' AND ', @filterquery) . " AND ($query)";
     }
   }
 
