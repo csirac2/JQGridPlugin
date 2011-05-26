@@ -72,7 +72,7 @@ sub new {
     'info.author' => 'By', 
     'By' => 'info.author',
     'info.author' => 'Author', 
-    'Author' => 'info.author',
+    'Author' => 'info.author'
   };
 
   return $this;
