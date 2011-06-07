@@ -743,6 +743,8 @@ HERE
       $fieldName = $this->column2FieldName($fieldName);
       if ($fieldName eq 'topic') {
           $cell .= '$topic';
+      } elsif ( $fieldName =~ /^[a-zA-Z_]+$/ ) {
+	  $cell .= '$formfield(' . $fieldName . ')';
       } else {
           $cell .= '$percntQUERY{\"\'$web.$topic\'/' . $fieldName . '\"}$percnt';
       }
