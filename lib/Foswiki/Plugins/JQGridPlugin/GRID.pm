@@ -532,14 +532,18 @@ sub restGridConnectorSearch {
     next unless $values;
 
     my $fieldName = $this->column2FieldName($columnName);
+    my @filterquery;
 
     # add search filters
     foreach my $value (split(/\s+/, $values)) {
       if ($value =~ /^-(.*)$/) {
-        $query .= " AND !(lc($fieldName)=~lc('$1'))";
+        push(@filterquery, "NOT (lc($fieldName)=~lc('$1'))");
       } else {
-        $query .= " AND lc($fieldName)=~lc('$value')";
+        push(@filterquery, "lc($fieldName)=~lc('$value')");
       }
+    }
+    if (scalar(@filterquery)) {
+      $query = join(' AND ', @filterquery) . " AND ($query)";
     }
   }
 
@@ -724,12 +728,13 @@ sub search {
     showpage="$params{page}"
     order="$order"
     separator="\$n"
-	pagerformat="<page>\$currentpage</page>
+    pagerformat=" "
+	pagerformat2="<page>\$currentpage</page>
 	<total>\$numberofpages</total>
 	<records>\$percntQUERY{\$numberofpages * \$pagesize}\$percnt</records>\$n"
     footer="\$n</noautolink></rows>"
     header="<?xml version='1.0' encoding='utf-8'?><noautolink><rows>
-    \$pager"
+    <page>\$currentpage</page><total>\$numberofpages</total><records>\$percntQUERY{\$numberofpages * \$pagesize}\$percnt</records>\$n"
     format="<row id='\$web.\$topic'>
 HERE
     my @selectedFields = split(/\s*,\s*/, $params{columns});
