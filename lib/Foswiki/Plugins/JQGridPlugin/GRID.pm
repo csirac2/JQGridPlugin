@@ -732,8 +732,8 @@ sub search {
 	pagerformat2="<page>\$currentpage</page>
 	<total>\$numberofpages</total>
 	<records>\$percntQUERY{\$numberofpages * \$pagesize}\$percnt</records>\$n"
-    footer="\$n</noautolink></rows>"
-    header="<?xml version='1.0' encoding='utf-8'?><noautolink><rows>
+    footer="\$n</rows>"
+    header="<literal><?xml version='1.0' encoding='utf-8'?><noautolink><rows>
     <page>\$currentpage</page><total>\$numberofpages</total><records>\$percntQUERY{\$numberofpages * \$pagesize}\$percnt</records>\$n"
     format="<row id='\$web.\$topic'>
 HERE
@@ -748,7 +748,7 @@ HERE
       }
       $tml .= '<cell><![CDATA[<nop>'.$cell.']]></cell>'."\n"; # SMELL extra space behind cell needed to work around bug in Render::getRenderedVerision
     }
-    $tml .= '</row>"}%</noautolink>';
+    $tml .= '</row>"}%</noautolink></literal>';
   }
 
   $tml = Foswiki::Func::expandCommonVariables($tml, $params{topic}, $params{web});
