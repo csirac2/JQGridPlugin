@@ -135,8 +135,7 @@ sub handleGrid {
   my $theGridComplete = $params->{gridComplete};
   my $theOnSelectRow = $params->{onSelectRow};
   my $theOnSelectAll = $params->{onSelectAll};
-  my $theConnector = $params->{connector};
-  my $session = $Foswiki::Plugins::SESSION;
+  my $theTopicFieldRegex = $params->{topicfieldregex} || 'Topic|TopicTitle';
 
   # sanitize params
   $theRowNumbers = ($theRowNumbers eq 'on')?'true':'false';
@@ -295,14 +294,13 @@ HERE
           push @colModel, "formatoptions: {srcformat: 's', newformat: 'd M Y - H:i'}";
           push @colModel, "sorttype:'date'";
         }
-        if ($fieldName =~ /^(Topic|TopicTitle)$/) {
+        if ($fieldName =~ /^(.*$theTopicFieldRegex)$/) {
           push @colModel, "formatter:'topic'";
         }
         if ($fieldName =~ /(Image|Photo)$/) {
           push @colModel, "formatter:'image'";
           push @colModel, "search:false" unless $doneSearchOption;
         }
-      }
 
       # format
       my $format = $params->{$fieldName.'_format'};
