@@ -119,6 +119,7 @@ sub handleGrid {
   my $theOnSelectRow = $params->{onSelectRow};
   my $theOnSelectAll = $params->{onSelectAll};
   my $theConnector = $params->{connector} || $Foswiki::cfg{JQGridPlugin}{DefaultConnector};
+  my $theTopicFieldRegex = $params->{topicfieldregex} || 'Topic|TopicTitle';
 
   # sanitize params
   $theRowNumbers = ($theRowNumbers eq 'on')?'true':'false';
@@ -267,7 +268,7 @@ HERE
         push @colModel, "formatoptions: {srcformat: 's', newformat: 'd M Y - H:i'}";
         push @colModel, "sorttype:'date'";
       }
-      if ($fieldName =~ /^(.*Topic|TopicTitle)$/) {
+      if ($fieldName =~ /^(.*$theTopicFieldRegex)$/) {
         push @colModel, "formatter:'topic'";
       }
       if ($fieldName =~ /(Image|Photo)$/) {
