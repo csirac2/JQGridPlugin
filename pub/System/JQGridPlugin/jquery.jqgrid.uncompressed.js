@@ -4237,7 +4237,7 @@ $.jgrid.extend({
     }, 
     target = "", 
     url, 
-    topic = cellVal.replace(/\./, '/'),
+    topic = cellVal.match(/[\/\.]/)? cellVal.replace(/\./, '/'): opts.rowId.replace(/\./, '/'),
     viewUrl = foswiki.getPreference("SCRIPTURLPATH")+'/view';
 
     if(!$.fmatter.isUndefined(opts.colModel.formatoptions)) {
