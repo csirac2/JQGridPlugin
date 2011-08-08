@@ -136,6 +136,7 @@ sub handleGrid {
   my $theOnSelectRow = $params->{onSelectRow};
   my $theOnSelectAll = $params->{onSelectAll};
   my $theTopicFieldRegex = $params->{topicfieldregex} || 'Topic|TopicTitle';
+  my $theImageFieldRegex = $params->{imagefieldregex} || 'Photo|Image';
 
   # sanitize params
   $theRowNumbers = ($theRowNumbers eq 'on')?'true':'false';
@@ -231,7 +232,7 @@ HERE
         push @selectedFields, $fieldName;
       }
     } else {
-      my $form = new Foswiki::Form($session, $theFormWeb, $theForm);
+      my $form = Foswiki::Form->new($this->{session}, $theFormWeb, $theForm);
       @selectedFields = map {$_->{name}} @{$form->getFields()} if $form;
     }
 
@@ -333,6 +334,9 @@ EOT
       my $isHidden = Foswiki::Func::isTrue($params->{$fieldName.'_hidden'}, 0);
       if ($isHidden) {
         push @colModel, "hidden:true";
+      }
+      if ($fieldName =~ /($theImageFieldRegex)/) {
+        push @colModel, "formatter:'image'";
       }
 
       # edit
