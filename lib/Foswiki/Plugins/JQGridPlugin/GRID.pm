@@ -120,6 +120,7 @@ sub handleGrid {
   my $theOnSelectAll = $params->{onSelectAll};
   my $theConnector = $params->{connector} || $Foswiki::cfg{JQGridPlugin}{DefaultConnector};
   my $theTopicFieldRegex = $params->{topicfieldregex} || 'Topic|TopicTitle';
+  my $theImageFieldRegex = $params->{imagefieldregex} || 'Photo|Image';
 
   # sanitize params
   $theRowNumbers = ($theRowNumbers eq 'on')?'true':'false';
@@ -214,7 +215,9 @@ HERE
         push @selectedFields, $fieldName;
       }
     } else {
-      my $form = new Foswiki::Form($this->{session}, $theFormWeb, $theForm);
+      my $form = Foswiki::Form->new($this->{session}, $theFormWeb, $theForm);
+      require Data::Dumper;
+      print STDERR Data::Dumper->Dump([$form->{_parsed}]);
       @selectedFields = map {$_->{name}} @{$form->getFields()} if $form;
     }
 
@@ -271,7 +274,7 @@ HERE
       if ($fieldName =~ /^(.*$theTopicFieldRegex)$/) {
         push @colModel, "formatter:'topic'";
       }
-      if ($fieldName =~ /(Image|Photo)$/) {
+      if ($fieldName =~ /($theImageFieldRegex)/) {
         push @colModel, "formatter:'image'";
       }
 

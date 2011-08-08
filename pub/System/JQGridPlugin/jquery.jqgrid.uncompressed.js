@@ -4154,7 +4154,7 @@ $.jgrid.extend({
             width: 80,
             baseUrl: '',
             params: '',
-            urlFormat: '%url%%value%?%params%'
+            urlFormat: '%url%/bin/rest/ImagePlugin/resize?topic=' + opts.rowId + ';file=%value%;height=80'
           };
 
       if(!$.fmatter.isUndefined(opts.colModel.formatoptions)) {
@@ -4179,9 +4179,12 @@ $.jgrid.extend({
     }, 
     target = "", 
     url, 
-    topic = cellVal.match(/[\/\.]/)? cellVal.replace(/\./, '/'): opts.rowId.replace(/\./, '/'),
+    topic,
     viewUrl = foswiki.getPreference("SCRIPTURLPATH")+'/view';
 
+    if (cellVal) {
+        topic = cellVal.match(/[\/\.]/)? cellVal.replace(/\./, '/'): opts.rowId.replace(/\./, '/');
+    }
     if(!$.fmatter.isUndefined(opts.colModel.formatoptions)) {
       op = $.extend({},op,opts.colModel.formatoptions);
     }
