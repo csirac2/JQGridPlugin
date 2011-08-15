@@ -111,7 +111,9 @@ sub handleGrid {
   my $theQuery = $params->{_DEFAULT} || $params->{query} || '';
   my $theWeb = $params->{web} || $web;
   my $theForm = $params->{form} || '';
+  my $theFirstCols = defined $params->{firstcols} ? ( ($params->{columns} =~ /\bTopic\b/) ? $params->{firstcols} : 'Topic') : undef;
   my $theCols = $params->{columns};
+  my $theLastCols = $params->{lastcols};
   my $theRows = $params->{rows};
   my $theRowNumbers = $params->{rownumbers} || 'off';
   my $theRowNumWidth = $params->{rownumwidth} || '25';
@@ -234,6 +236,16 @@ HERE
     } else {
       my $form = Foswiki::Form->new($this->{session}, $theFormWeb, $theForm);
       @selectedFields = map {$_->{name}} @{$form->getFields()} if $form;
+    }
+    if ($theFirstCols) {
+      foreach my $fieldName (split(/\s*,\s*/, $theFirstCols)) {
+        unshift @selectedFields, $fieldName;
+      }
+    }
+    if ($theLastCols) {
+      foreach my $fieldName (split(/\s*,\s*/, $theLastCols)) {
+        push @selectedFields, $fieldName;
+      }
     }
 
     if ($theInclude) {
