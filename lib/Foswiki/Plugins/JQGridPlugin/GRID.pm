@@ -137,6 +137,8 @@ sub handleGrid {
   my $theGridComplete = $params->{gridComplete};
   my $theOnSelectRow = $params->{onSelectRow};
   my $theOnSelectAll = $params->{onSelectAll};
+  my $theConnector = $params->{connector};
+  my $session = $Foswiki::Plugins::SESSION;
   my $theTopicFieldRegex = $params->{topicfieldregex} || 'Topic|TopicTitle';
   my $theImageFieldRegex = $params->{imagefieldregex} || 'Photo|Image';
 
@@ -234,7 +236,7 @@ HERE
         push @selectedFields, $fieldName;
       }
     } else {
-      my $form = Foswiki::Form->new($this->{session}, $theFormWeb, $theForm);
+      my $form = Foswiki::Form->new($session, $theFormWeb, $theForm);
       @selectedFields = map {$_->{name}} @{$form->getFields()} if $form;
     }
     if ($theFirstCols) {
@@ -314,6 +316,7 @@ HERE
           push @colModel, "formatter:'image'";
           push @colModel, "search:false" unless $doneSearchOption;
         }
+      }
 
       # format
       my $format = $params->{$fieldName.'_format'};
