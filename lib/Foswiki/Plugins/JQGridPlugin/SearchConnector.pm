@@ -97,7 +97,7 @@ sub restHandleSearch {
     }
   }
 
-  my $sort = $request->param('sidx') || '';
+  my $sort = $request->param('sidx') || 'Topic';
   my $sord = $request->param('sord') || 'asc';
   my $reverse = ($sord eq 'desc'?'on':'off');
 
