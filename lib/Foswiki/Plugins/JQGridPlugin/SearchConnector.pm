@@ -171,7 +171,7 @@ HERE
     my $propertyName = $this->column2Property($columnName);
     if ($propertyName eq 'name') {
       $cell .= '$topic';
-    } elsif ($propertyName =~ /^[a-zA-Z_]+$/) { # SMELL: should check if this is a defined formfield consulting the DataForm definition 
+    } elsif ($propertyName ne 'text' && $propertyName =~ /^[a-zA-Z_]+$/) { # SMELL: should check if this is a defined formfield consulting the DataForm definition 
       $cell .= '$formfield(' . $propertyName . ')';
     } else {
       $cell .= '$percntQUERY{\"\'$web.$topic\'/' . $propertyName . '\"}$percnt';
