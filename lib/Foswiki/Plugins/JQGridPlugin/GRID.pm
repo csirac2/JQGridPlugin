@@ -17,9 +17,12 @@ package Foswiki::Plugins::JQGridPlugin::GRID;
 use strict;
 use warnings;
 
+use Foswiki::Plugins::JQueryPlugin ();
 use Foswiki::Plugins::JQueryPlugin::Plugin ();
 use Foswiki::Plugins::JQueryPlugin::Plugins ();
 use Foswiki::Form ();
+use Error qw(:try);
+use Digest::MD5 ();
 
 our @ISA = qw( Foswiki::Plugins::JQueryPlugin::Plugin );
 
@@ -33,7 +36,7 @@ This is the perl stub for the jquery.grid plugin.
 
 =begin TML
 
----++ ClassMethod new( $class, $session, ... )
+---++ ClassMethod new( $class, ... )
 
 Constructor
 
@@ -43,13 +46,23 @@ sub new {
   my $class = shift;
   my $session = shift || $Foswiki::Plugins::SESSION;
 
+  $Foswiki::cfg{JQGridPlugin}{DefaultConnector} = 'search'
+    unless defined $Foswiki::cfg{JQGridPlugin}{DefaultConnector};
+  $Foswiki::cfg{JQGridPlugin}{Connector}{search} = 'Foswiki::Plugins::JQGridPlugin::SearchConnector'
+    unless defined $Foswiki::cfg{JQGridPlugin}{Connector}{search};
+  $Foswiki::cfg{JQGridPlugin}{Connector}{dbcache} = 'Foswiki::Plugins::JQGridPlugin::DBCacheConnector'
+    unless defined $Foswiki::cfg{JQGridPlugin}{Connector}{dbcache};
+  $Foswiki::cfg{JQGridPlugin}{Connector}{solr} = 'Foswiki::Plugins::JQGridPlugin::SolrConnector'
+    unless defined $Foswiki::cfg{JQGridPlugin}{Connector}{solr};
+
   my $this = bless($class->SUPER::new( 
     $session,
     name => 'Grid',
-    version => '4.0.0',
+    version => '4.1.2',
     author => 'Tony Tomov',
     homepage => 'http://www.trirand.com/blog/',
     puburl => '%PUBURLPATH%/%SYSTEMWEB%/JQGridPlugin',
+    documentation => '%SYSTEMWEB%.JQGridPlugin',
     javascript => ['jquery.jqgrid.js', 'jquery.jqgrid.init.js'],
     css => ['css/jquery.jqgrid.css'],
     dependencies => ['ui', 'metadata', 'livequery', 'JQUERYPLUGIN::THEME', 'JQUERYPLUGIN::GRID::LANG'], 
@@ -72,7 +85,8 @@ sub init {
   return unless $this->SUPER::init();
 
   # open matching localization file if it exists
-  my $langTag = $this->{session}->i18n->language();
+  my $session = $Foswiki::Plugins::SESSION;
+  my $langTag = $session->i18n->language();
   my $localeFile = 'i18n/grid.locale-'.$langTag.'.js';
   $localeFile = 'i18n/grid.locale-en.js' 
     unless -f $this->{puburl}.'/'.$localeFile;
@@ -92,12 +106,15 @@ Tag handler for =%<nop>GRID{web="blah"}%=.
 sub handleGrid {
   my ($this, $params, $topic, $web) = @_;
 
+  #print STDERR "called handleGrid(".$params->stringify."), topic=$topic, web=$web\n";
+
   my $theQuery = $params->{_DEFAULT} || $params->{query} || '';
   my $theWeb = $params->{web} || $web;
   my $theForm = $params->{form} || '';
   my $theCols = $params->{columns};
   my $theRows = $params->{rows};
   my $theRowNumbers = $params->{rownumbers} || 'off';
+  my $theRowNumWidth = $params->{rownumwidth} || '25';
   my $theInclude = $params->{include};
   my $theExclude = $params->{exclude};
   my $theFilterbar = $params->{filterbar} || 'off';
@@ -144,8 +161,8 @@ myGrid.jqGrid('navGrid', '#$pagerId', {
   add:false
 });
 myGrid.jqGrid('navButtonAdd', '#$pagerId', {
-  caption:'%MAKETEXT{"Clear"}%',
-  title:'%MAKETEXT{"Clear Search"}%',
+  caption:'%MAKETEXT{"Reload"}%',
+  title:'%MAKETEXT{"Reload Grid"}%',
   buttonicon:'ui-icon-refresh', 
   onClickButton:function() { 
     myGrid[0].clearToolbar();
@@ -173,6 +190,7 @@ HERE
     "rowList:[$theRowList]",
     "sortorder: '$sortOrder'",
     "rownumbers: $theRowNumbers",
+    "rownumWidth: $theRowNumWidth",
     "cellLayout: 18", # SMELL: this is depending on the skin's css :(
   );
  
@@ -200,7 +218,7 @@ HERE
 
   push @metadata, "caption:'$theCaption'" if defined $theCaption; 
 
-  if ($theQuery || $theForm) {
+  if ($theQuery || $theForm || $theConnector) {
     # ajax mode #############################
     if (!$theQuery && $theForm) {
       $theQuery = "form.name='$theForm'";
@@ -216,8 +234,6 @@ HERE
       }
     } else {
       my $form = Foswiki::Form->new($this->{session}, $theFormWeb, $theForm);
-      require Data::Dumper;
-      print STDERR Data::Dumper->Dump([$form->{_parsed}]);
       @selectedFields = map {$_->{name}} @{$form->getFields()} if $form;
     }
 
@@ -259,23 +275,65 @@ HERE
       push @colModel, "width:$fieldWidth" if defined $fieldWidth;
 
       # search
+      # TODO: search configuration - see http://www.trirand.com/jqgridwiki/doku.php?id=wiki:search_config
+      my $doneSearchOption = 0;
       my $fieldSearch = $params->{$fieldName.'_search'};
-      $fieldSearch = 'on' unless defined $fieldSearch;
-      $fieldSearch = ($fieldSearch eq 'on')?'true':'false';
-      push @colModel, "search:$fieldSearch";
+      if (defined $fieldSearch) {
+        $fieldSearch = ($fieldSearch eq 'on')?'true':'false';
+        push @colModel, "search:$fieldSearch";
+        $doneSearchOption = 1;
+      }
 
-      # formatter, but also for table2grid mode
-      # TODO
-      if ($fieldName =~ /^(Date|Changed|Modified|info.date|info.createdate)$/) {
-        push @colModel, "formatter:'date'";
-        push @colModel, "formatoptions: {srcformat: 's', newformat: 'd M Y - H:i'}";
-        push @colModel, "sorttype:'date'";
+      # formatter
+      my $formatter = $params->{$fieldName.'_formatter'};
+      if ($formatter) {
+        push @colModel, "formater:'$formatter'";
+
+
+      } else {
+        if ($fieldName =~ /^(Date|Changed|Modified|info.date|info.createdate)$/) {
+          push @colModel, "formatter:'date'";
+          push @colModel, "formatoptions: {srcformat: 's', newformat: 'd M Y - H:i'}";
+          push @colModel, "sorttype:'date'";
+        }
+        if ($fieldName =~ /^(.*$theTopicFieldRegex)$/) {
+          push @colModel, "formatter:'topic'";
+        }
+        if ($fieldName =~ /($theImageFieldRegex)/) {
+          push @colModel, "formatter:'image'";
+          push @colModel, "search:false" unless $doneSearchOption;
+        }
       }
-      if ($fieldName =~ /^(.*$theTopicFieldRegex)$/) {
-        push @colModel, "formatter:'topic'";
+      my $format = $params->{$fieldName.'_format'};
+      my $templateId; # added to the format opts below
+      if (defined $format) {
+
+        # load the tmpl module
+        Foswiki::Plugins::JQueryPlugin::createPlugin("tmpl");
+        
+        $templateId = "jqgrid_tmpl_".Digest::MD5::md5_hex($format);
+        push @colModel, "formatter:'tmpl'";
+
+        Foswiki::Func::addToZone("head", $templateId, <<"EOT");
+<script id="$templateId" type="text/x-jquery-tmpl">  
+<div class='foswikiHidden cellValue'>\${value}</div>
+$format
+</script>
+EOT
+      } 
+
+      # format options
+      my $formatOpts = $params->{$fieldName.'_formatoptions'};
+      if ($templateId) {
+        $formatOpts .= ', ' if $formatOpts;
+        $formatOpts .= "template: '$templateId'";
       }
-      if ($fieldName =~ /($theImageFieldRegex)/) {
-        push @colModel, "formatter:'image'";
+      push @colModel, "formatoptions: {$formatOpts}" if $formatOpts;
+
+      # hidden
+      my $isHidden = Foswiki::Func::isTrue($params->{$fieldName.'_hidden'}, 0);
+      if ($isHidden) {
+        push @colModel, "hidden:true";
       }
 
       # edit
@@ -296,10 +354,11 @@ HERE
 
     push @metadata, 'colModel: ['.join(",\n", @colModels).']';
 
-    my $baseWeb = $this->{session}->{webName};
-    my $baseTopic = $this->{session}->{topicName};
+    my $baseWeb = $this->{session}{webName};
+    my $baseTopic = $this->{session}{topicName};
     my $gridConnectorUrl;
 
+    $theConnector = $Foswiki::cfg{JQGridPlugin}{DefaultConnector} unless defined $theConnector;
     my ($connectorWeb, $connectorTopic) = Foswiki::Func::normalizeWebTopicName($baseWeb, $theConnector);
     if (Foswiki::Func::topicExists($connectorWeb, $connectorTopic)) {
       $gridConnectorUrl = Foswiki::Func::getScriptUrl(
@@ -323,7 +382,7 @@ HERE
           connector => $theConnector,
         );
       } else {
-        die "unknown grid connector $theConnector"; # SMELL: where's the catch
+        throw Error::Simple("unknown grid connector $theConnector"); # SMELL: where's the catch
       }
     }
     $gridConnectorUrl =~ s/'/\\'/g;
@@ -375,6 +434,17 @@ ondblClickRow: function(id) {
 HERE
       push @metadata, $onSelect;
     }
+
+    # add styling to sorted columns
+    push @metadata, "altRows: true";
+    push @metadata, <<'HERE';
+onSortCol: function(index, iCol, sortOrder) {
+  var $table = $(this);
+  window.setTimeout(function() {
+    $table.find("tr td:nth-child("+(iCol+1)+")").addClass("ui-jqgrid-sortcol");
+  }, 0);
+}
+HERE
 
     my $metadata = '{'.join(",\n", @metadata)."}\n";
     my $autoResizer = '';
