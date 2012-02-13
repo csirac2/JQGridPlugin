@@ -4210,9 +4210,9 @@ $.jgrid.extend({
       var url,
           op = {
             width: 80,
-            baseUrl: '',
+            baseUrl: foswiki.getPreference('SCRIPTURLPATH'),
             params: '',
-            urlFormat: '%url%/bin/rest/ImagePlugin/resize?topic=' + opts.rowId + ';file=%value%;height=80'
+            urlFormat: '%url%/rest/ImagePlugin/resize?topic=' + opts.rowId + ';file=%value%;height=80'
           };
 
       if(!$.fmatter.isUndefined(opts.colModel.formatoptions)) {
